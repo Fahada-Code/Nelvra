@@ -1,0 +1,40 @@
+version: "3.9"
+
+# Production override — use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from dev:
+# - No volume mounts (code is baked into images)
+# - Uvicorn runs without --reload
+# - Postgres and Redis bind only to internal network
+
+services:
+  postgres:
+    ports: []
+    networks:
+      - internal
+
+  redis:
+    ports: []
+    networks:
+      - internal
+
+  api:
+    volumes: []
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+    environment:
+      ENVIRONMENT: production
+    networks:
+      - internal
+      - web
+
+  dashboard:
+    networks:
+      - web
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  web:
+    driver: bridge
