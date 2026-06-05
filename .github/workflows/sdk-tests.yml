@@ -1,0 +1,58 @@
+name: SDK Tests
+
+on:
+  push:
+    branches: [main]
+    paths: [sdks/**]
+  pull_request:
+    branches: [main]
+    paths: [sdks/**]
+
+jobs:
+  python-sdk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SDK with dev deps
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest --cov=nelvra --cov-report=term-missing -v
+
+      - name: Lint
+        run: |
+          ruff check nelvra/
+          black --check nelvra/
+
+  javascript-sdk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdks/javascript
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: sdks/javascript/package.json
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

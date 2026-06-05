@@ -50,6 +50,39 @@ services:
     volumes:
       - ./backend:/app
 
+  worker:
+    build:
+      context: ./backend
+    command: ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nelvra:nelvra@postgres:5432/nelvra
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+  beat:
+    build:
+      context: ./backend
+    command: ["celery", "-A", "workers.celery_app", "beat", "--loglevel=info", "--scheduler=celery.beat:PersistentScheduler"]
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nelvra:nelvra@postgres:5432/nelvra
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - worker
+    volumes:
+      - ./backend:/app
+
   dashboard:
     build:
       context: ./frontend

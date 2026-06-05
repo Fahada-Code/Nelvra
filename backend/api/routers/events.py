@@ -10,6 +10,7 @@ from ..schemas.events import (
     LLMEventResponse,
 )
 from ..services.event_service import EventService
+from ..tasks import evaluate_quality_async
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -26,6 +27,7 @@ async def ingest_event(
     db: AsyncSession = Depends(get_db),
 ) -> LLMEventResponse:
     event = await EventService.create(db, project_id, data)
+    evaluate_quality_async(event.id)
     return LLMEventResponse.model_validate(event)
 
 
@@ -41,4 +43,6 @@ async def ingest_events_batch(
     db: AsyncSession = Depends(get_db),
 ) -> LLMEventBatchResponse:
     events = await EventService.create_batch(db, project_id, data.events)
+    for e in events:
+        evaluate_quality_async(e.id)
     return LLMEventBatchResponse(created=len(events), ids=[e.id for e in events])

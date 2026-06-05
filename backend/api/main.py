@@ -8,7 +8,7 @@ from .config import settings
 from .database import engine
 from .exceptions import NelvraException, nelvra_exception_handler
 from .models.base import Base
-from .routers import analytics, auth, events, projects
+from .routers import alerts, analytics, auth, billing, events, export, projects, prompts, teams
 
 logging.basicConfig(level=getattr(logging, settings.log_level))
 logger = logging.getLogger(__name__)
@@ -49,6 +49,11 @@ app.include_router(events.router, prefix="/v1")
 app.include_router(projects.router, prefix="/v1")
 app.include_router(analytics.router, prefix="/v1")
 app.include_router(auth.router, prefix="/v1")
+app.include_router(alerts.router, prefix="/v1")
+app.include_router(prompts.router, prefix="/v1")
+app.include_router(billing.router, prefix="/v1")
+app.include_router(teams.router, prefix="/v1")
+app.include_router(export.router, prefix="/v1")
 
 
 @app.get("/health", tags=["system"])

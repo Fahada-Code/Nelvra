@@ -7,3 +7,13 @@ pydantic==2.10.0
 pydantic-settings==2.6.1
 redis==5.2.0
 python-dotenv==1.0.1
+# Background workers
+celery[redis]==5.4.0
+# AI features: quality scoring, drift explanation, prompt optimization
+anthropic==0.39.0
+# Billing
+stripe==11.3.0
+# Email alerts
+aiosmtplib==3.0.1
+# CSV export
+python-multipart==0.0.12
