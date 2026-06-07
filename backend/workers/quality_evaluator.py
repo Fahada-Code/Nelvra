@@ -6,6 +6,7 @@ Called asynchronously after every event is ingested.
 
 Requires ANTHROPIC_API_KEY. If not set, silently skips scoring.
 """
+
 import asyncio
 import json
 import logging
@@ -49,12 +50,14 @@ def evaluate_quality(self, event_id: str) -> None:
 
 async def _run(event_id: str) -> None:
     from api.config import settings
+
     if not settings.anthropic_api_key or not settings.quality_scoring_enabled:
         return
 
+    from sqlalchemy import select
+
     from api.database import AsyncSessionLocal
     from api.models.llm_event import LLMEvent
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -90,7 +93,9 @@ def _format_conversation(messages: list, system_prompt: str | None) -> str:
     return "\n".join(parts)
 
 
-async def _score(api_key: str, conversation: str, response: str, model: str) -> tuple[float | None, list[str]]:
+async def _score(
+    api_key: str, conversation: str, response: str, model: str
+) -> tuple[float | None, list[str]]:
     import anthropic
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
@@ -98,13 +103,15 @@ async def _score(api_key: str, conversation: str, response: str, model: str) -> 
         msg = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=100,
-            messages=[{
-                "role": "user",
-                "content": SCORING_PROMPT.format(
-                    conversation=conversation[:1000],
-                    response=response[:1000],
-                ),
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": SCORING_PROMPT.format(
+                        conversation=conversation[:1000],
+                        response=response[:1000],
+                    ),
+                }
+            ],
         )
         raw = msg.content[0].text.strip()
         data = json.loads(raw)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +20,9 @@ class PromptService:
         db.add(prompt)
         await db.flush()
         # Create initial version record
-        v = PromptVersion(prompt_id=prompt.id, version=1, content=data.content, change_note="Initial version")
+        v = PromptVersion(
+            prompt_id=prompt.id, version=1, content=data.content, change_note="Initial version"
+        )
         db.add(v)
         await db.flush()
         await db.refresh(prompt)
@@ -38,7 +40,9 @@ class PromptService:
     @staticmethod
     async def get(db: AsyncSession, project_id: str, prompt_id: str) -> Prompt:
         result = await db.execute(
-            select(Prompt).where(Prompt.id == prompt_id, Prompt.project_id == project_id, Prompt.deleted_at.is_(None))
+            select(Prompt).where(
+                Prompt.id == prompt_id, Prompt.project_id == project_id, Prompt.deleted_at.is_(None)
+            )
         )
         prompt = result.scalar_one_or_none()
         if not prompt:
@@ -46,7 +50,9 @@ class PromptService:
         return prompt
 
     @staticmethod
-    async def update(db: AsyncSession, project_id: str, prompt_id: str, data: PromptUpdate) -> Prompt:
+    async def update(
+        db: AsyncSession, project_id: str, prompt_id: str, data: PromptUpdate
+    ) -> Prompt:
         prompt = await PromptService.get(db, project_id, prompt_id)
         content_changed = data.content is not None and data.content != prompt.content
 
@@ -81,7 +87,7 @@ class PromptService:
     @staticmethod
     async def delete(db: AsyncSession, project_id: str, prompt_id: str) -> None:
         prompt = await PromptService.get(db, project_id, prompt_id)
-        prompt.deleted_at = datetime.now(timezone.utc)
+        prompt.deleted_at = datetime.now(UTC)
         await db.flush()
 
     @staticmethod
@@ -100,17 +106,17 @@ class PromptService:
         if not prompt.optimized_version:
             raise NelvraException("No optimized version available", "NO_OPTIMIZATION", 400)
 
-        old_content = prompt.content
         prompt.content = prompt.optimized_version
         prompt.version += 1
         prompt.optimization_status = "deployed"
         prompt.optimized_version = None
 
+        savings = prompt.optimization_savings or 0
         v = PromptVersion(
             prompt_id=prompt.id,
             version=prompt.version,
             content=prompt.content,
-            change_note=f"Deployed optimized version (est. {prompt.optimization_savings or 0:.1f}% token reduction)",
+            change_note=f"Deployed optimized version (est. {savings:.1f}% token reduction)",
         )
         db.add(v)
         await db.flush()

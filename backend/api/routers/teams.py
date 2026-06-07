@@ -25,8 +25,9 @@ async def invite_member(
     auth_project_id: str = Depends(get_current_project_id),
     db: AsyncSession = Depends(get_db),
 ) -> TeamMemberResponse:
-    from ..models.project import Project
     from sqlalchemy import select
+
+    from ..models.project import Project
 
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()

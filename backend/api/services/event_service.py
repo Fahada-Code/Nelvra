@@ -8,12 +8,10 @@ class EventService:
     """Business logic for LLM event ingestion."""
 
     @staticmethod
-    async def create(
-        db: AsyncSession, project_id: str, data: LLMEventCreate
-    ) -> LLMEvent:
+    async def create(db: AsyncSession, project_id: str, data: LLMEventCreate) -> LLMEvent:
         event = LLMEvent(
             project_id=project_id,
-            timestamp=data.timestamp.isoformat(),
+            timestamp=data.timestamp,
             model=data.model,
             provider=data.provider,
             prompt_id=data.prompt_id,
@@ -45,7 +43,7 @@ class EventService:
         events = [
             LLMEvent(
                 project_id=project_id,
-                timestamp=data.timestamp.isoformat(),
+                timestamp=data.timestamp,
                 model=data.model,
                 provider=data.provider,
                 prompt_id=data.prompt_id,

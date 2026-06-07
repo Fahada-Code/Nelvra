@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,7 +28,9 @@ class TeamService:
         return members
 
     @staticmethod
-    async def invite(db: AsyncSession, project_id: str, inviter_id: str, data: TeamMemberInvite) -> TeamMemberResponse:
+    async def invite(
+        db: AsyncSession, project_id: str, inviter_id: str, data: TeamMemberInvite
+    ) -> TeamMemberResponse:
         user_result = await db.execute(
             select(User).where(User.github_login == data.github_login, User.deleted_at.is_(None))
         )
@@ -55,7 +57,7 @@ class TeamService:
             user_id=user.id,
             role=data.role,
             invited_by=inviter_id,
-            joined_at=datetime.now(timezone.utc),
+            joined_at=datetime.now(UTC),
         )
         db.add(tm)
         await db.flush()
@@ -68,11 +70,17 @@ class TeamService:
         return resp
 
     @staticmethod
-    async def update_role(db: AsyncSession, project_id: str, member_id: str, data: TeamMemberUpdate) -> TeamMemberResponse:
+    async def update_role(
+        db: AsyncSession, project_id: str, member_id: str, data: TeamMemberUpdate
+    ) -> TeamMemberResponse:
         result = await db.execute(
             select(TeamMember, User)
             .join(User, User.id == TeamMember.user_id)
-            .where(TeamMember.id == member_id, TeamMember.project_id == project_id, TeamMember.deleted_at.is_(None))
+            .where(
+                TeamMember.id == member_id,
+                TeamMember.project_id == project_id,
+                TeamMember.deleted_at.is_(None),
+            )
         )
         row = result.one_or_none()
         if not row:
@@ -92,7 +100,9 @@ class TeamService:
     async def remove(db: AsyncSession, project_id: str, member_id: str) -> None:
         result = await db.execute(
             select(TeamMember).where(
-                TeamMember.id == member_id, TeamMember.project_id == project_id, TeamMember.deleted_at.is_(None)
+                TeamMember.id == member_id,
+                TeamMember.project_id == project_id,
+                TeamMember.deleted_at.is_(None),
             )
         )
         tm = result.scalar_one_or_none()
@@ -100,5 +110,5 @@ class TeamService:
             raise NelvraException("Team member not found", "MEMBER_NOT_FOUND", 404)
         if tm.role == "owner":
             raise NelvraException("Cannot remove the project owner", "CANNOT_REMOVE_OWNER", 403)
-        tm.deleted_at = datetime.now(timezone.utc)
+        tm.deleted_at = datetime.now(UTC)
         await db.flush()

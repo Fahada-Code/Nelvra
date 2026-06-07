@@ -4,9 +4,10 @@ Alert Dispatcher — Celery task.
 Runs every minute. Evaluates all enabled threshold alerts against recent data
 and fires notifications when thresholds are breached.
 """
+
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from workers.celery_app import app
 
@@ -21,13 +22,14 @@ def check_all_alerts() -> None:
 
 
 async def _run() -> None:
+    from sqlalchemy import select
+
     from api.database import AsyncSessionLocal
     from api.models.alert import Alert
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Alert).where(Alert.enabled == True, Alert.deleted_at.is_(None))
+            select(Alert).where(Alert.enabled.is_(True), Alert.deleted_at.is_(None))
         )
         for alert in result.scalars():
             await _evaluate(db, alert)
@@ -35,12 +37,14 @@ async def _run() -> None:
 
 
 async def _evaluate(db, alert) -> None:
+    from api.services.alert_service import AlertNotifier
+
     value = await _compute_metric(db, alert)
     if value is None:
         return
 
     breached = _check_threshold(value, alert.operator, alert.threshold)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if breached:
         alert.consecutive_breaches += 1
@@ -61,23 +65,25 @@ async def _evaluate(db, alert) -> None:
 
 
 def _check_threshold(value: float, operator: str, threshold: float) -> bool:
-    ops = {"gt": value > threshold, "lt": value < threshold, "gte": value >= threshold, "lte": value <= threshold}
+    ops = {
+        "gt": value > threshold,
+        "lt": value < threshold,
+        "gte": value >= threshold,
+        "lte": value <= threshold,
+    }
     return ops.get(operator, False)
 
 
 async def _compute_metric(db, alert) -> float | None:
+    from sqlalchemy import func, select
+
     from api.models.llm_event import LLMEvent
-    from sqlalchemy import cast, func, select
-    from sqlalchemy.dialects.postgresql import TIMESTAMP as PG_TS
 
-    since = datetime.now(timezone.utc) - timedelta(minutes=alert.window_minutes)
-
-    def _ts(col):
-        return cast(col, PG_TS(timezone=True))
+    since = datetime.now(UTC) - timedelta(minutes=alert.window_minutes)
 
     filters = (
         LLMEvent.project_id == alert.project_id,
-        _ts(LLMEvent.timestamp) >= since,
+        LLMEvent.timestamp >= since,
         LLMEvent.deleted_at.is_(None),
     )
 
@@ -87,9 +93,12 @@ async def _compute_metric(db, alert) -> float | None:
 
     if alert.metric == "error_rate":
         r = await db.execute(
-            select(func.count(), func.count().filter(
-                LLMEvent.finish_reason.in_(["error", "content_filter", "canceled"])
-            )).where(*filters)
+            select(
+                func.count(),
+                func.count().filter(
+                    LLMEvent.finish_reason.in_(["error", "content_filter", "canceled"])
+                ),
+            ).where(*filters)
         )
         total, errors = r.one()
         return (errors / total) if total > 0 else 0.0
@@ -110,6 +119,7 @@ async def _compute_metric(db, alert) -> float | None:
 
 async def _create_incident(db, alert, value: float) -> None:
     from api.models.alert import AlertIncident
+
     incident = AlertIncident(
         alert_id=alert.id,
         project_id=alert.project_id,
@@ -117,54 +127,3 @@ async def _create_incident(db, alert, value: float) -> None:
         notification_sent=True,
     )
     db.add(incident)
-
-
-class AlertNotifier:
-    """Handles Slack and email notification dispatch."""
-
-    @staticmethod
-    async def send(alert, title: str, body: str) -> None:
-        if alert.notify_slack and alert.slack_webhook_url:
-            await AlertNotifier._send_slack(alert.slack_webhook_url, title, body)
-        if alert.notify_email and alert.email_address:
-            await AlertNotifier._send_email(alert.email_address, title, body)
-
-    @staticmethod
-    async def _send_slack(webhook_url: str, title: str, body: str) -> None:
-        import httpx
-        payload = {
-            "text": f"🚨 *{title}*\n{body}",
-            "username": "Nelvra Alerts",
-            "icon_emoji": ":warning:",
-        }
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(webhook_url, json=payload)
-                resp.raise_for_status()
-        except Exception as exc:
-            logger.warning("Slack notification failed: %s", exc)
-
-    @staticmethod
-    async def _send_email(to_address: str, title: str, body: str) -> None:
-        from api.config import settings
-        if not settings.smtp_username:
-            return
-        try:
-            import aiosmtplib
-            from email.mime.text import MIMEText
-
-            msg = MIMEText(f"{body}\n\n— Nelvra Alerts\nhttps://app.nelvra.io")
-            msg["Subject"] = f"[Nelvra] {title}"
-            msg["From"] = settings.smtp_from
-            msg["To"] = to_address
-
-            await aiosmtplib.send(
-                msg,
-                hostname=settings.smtp_host,
-                port=settings.smtp_port,
-                username=settings.smtp_username,
-                password=settings.smtp_password,
-                start_tls=True,
-            )
-        except Exception as exc:
-            logger.warning("Email notification failed: %s", exc)

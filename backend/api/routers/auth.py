@@ -42,6 +42,7 @@ async def register_github_user(
     existing_key_prefix = None
     if plaintext_key is None:
         from ..services.api_key_service import ApiKeyService
+
         keys = await ApiKeyService.list_for_project(db, project.id)
         if keys:
             existing_key_prefix = keys[0].key_prefix

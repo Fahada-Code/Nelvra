@@ -5,6 +5,10 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+# Alembic generates migrations with its own boilerplate style; don't lint them.
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
 [tool.black]

@@ -1,20 +1,13 @@
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import cast, func, select, text
-from sqlalchemy.dialects.postgresql import TIMESTAMP as PG_TIMESTAMP
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.llm_event import LLMEvent
-from ..schemas.analytics import HourlyBucket, OverviewResponse, RequestSummary, RequestsListResponse
+from ..schemas.analytics import HourlyBucket, OverviewResponse, RequestsListResponse, RequestSummary
 
 # finish_reason values that indicate something went wrong
 _ERROR_FINISH_REASONS = frozenset({"error", "content_filter", "canceled"})
-
-
-def _ts(col: Any) -> Any:
-    """Cast a string timestamp column to PostgreSQL TIMESTAMPTZ for comparison."""
-    return cast(col, PG_TIMESTAMP(timezone=True))
 
 
 class AnalyticsService:
@@ -24,11 +17,11 @@ class AnalyticsService:
     async def get_overview(
         db: AsyncSession, project_id: str, period_hours: int = 24
     ) -> OverviewResponse:
-        since = datetime.now(timezone.utc) - timedelta(hours=period_hours)
+        since = datetime.now(UTC) - timedelta(hours=period_hours)
 
         base_filter = (
             LLMEvent.project_id == project_id,
-            _ts(LLMEvent.timestamp) >= since,
+            LLMEvent.timestamp >= since,
             LLMEvent.deleted_at.is_(None),
         )
 
@@ -74,13 +67,13 @@ class AnalyticsService:
         # Hourly bucketed requests (for sparklines / time-series charts)
         hourly_result = await db.execute(
             select(
-                func.date_trunc("hour", _ts(LLMEvent.timestamp)).label("hour"),
+                func.date_trunc("hour", LLMEvent.timestamp).label("hour"),
                 func.count().label("requests"),
                 func.coalesce(func.sum(LLMEvent.cost_usd), 0).label("cost_usd"),
             )
             .where(*base_filter)
-            .group_by(func.date_trunc("hour", _ts(LLMEvent.timestamp)))
-            .order_by(func.date_trunc("hour", _ts(LLMEvent.timestamp)))
+            .group_by(func.date_trunc("hour", LLMEvent.timestamp))
+            .order_by(func.date_trunc("hour", LLMEvent.timestamp))
         )
         hourly_buckets = [
             HourlyBucket(
@@ -131,21 +124,17 @@ class AnalyticsService:
         if feature:
             filters.append(LLMEvent.feature == feature)
 
-        count_result = await db.execute(
-            select(func.count()).where(*filters)
-        )
+        count_result = await db.execute(select(func.count()).where(*filters))
         total = count_result.scalar_one()
 
         items_result = await db.execute(
             select(LLMEvent)
             .where(*filters)
-            .order_by(_ts(LLMEvent.timestamp).desc())
+            .order_by(LLMEvent.timestamp.desc())
             .limit(per_page)
             .offset(offset)
         )
-        items = [
-            RequestSummary.model_validate(row) for row in items_result.scalars()
-        ]
+        items = [RequestSummary.model_validate(row) for row in items_result.scalars()]
 
         return RequestsListResponse(
             items=items,
@@ -155,9 +144,7 @@ class AnalyticsService:
         )
 
     @staticmethod
-    async def get_event_detail(
-        db: AsyncSession, project_id: str, event_id: str
-    ) -> LLMEvent | None:
+    async def get_event_detail(db: AsyncSession, project_id: str, event_id: str) -> LLMEvent | None:
         result = await db.execute(
             select(LLMEvent).where(
                 LLMEvent.id == event_id,

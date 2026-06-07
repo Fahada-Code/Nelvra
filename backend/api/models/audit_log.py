@@ -17,7 +17,9 @@ class AuditLog(TimestampMixin, Base):
     )
 
     project_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)
-    user_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id"), nullable=True
+    )
     # e.g. "api_key.created", "alert.triggered", "prompt.deployed"
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     # e.g. "api_key", "alert", "prompt", "project"

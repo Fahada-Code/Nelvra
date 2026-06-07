@@ -14,7 +14,9 @@ class Prompt(TimestampMixin, Base):
     __tablename__ = "prompts"
     __table_args__ = (Index("ix_prompts_project_id", "project_id"),)
 
-    project_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("projects.id"), nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("projects.id"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     variables: Mapped[Any] = mapped_column(JSONB, nullable=False, default=list)
@@ -30,7 +32,9 @@ class Prompt(TimestampMixin, Base):
     # Drift state
     # "stable" | "degrading" | "improving"
     quality_trend: Mapped[str] = mapped_column(String(20), nullable=False, default="stable")
-    drift_detected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    drift_detected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     drift_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Optimization state
@@ -47,7 +51,9 @@ class PromptVersion(TimestampMixin, Base):
     __tablename__ = "prompt_versions"
     __table_args__ = (Index("ix_prompt_versions_prompt_id", "prompt_id"),)
 
-    prompt_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("prompts.id"), nullable=False)
+    prompt_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("prompts.id"), nullable=False
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     change_note: Mapped[str | None] = mapped_column(String(500), nullable=True)

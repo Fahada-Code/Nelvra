@@ -1,6 +1,6 @@
 import hashlib
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,9 +72,7 @@ class ApiKeyService:
 
         # Fire-and-forget last_used_at update — best effort, non-critical
         await db.execute(
-            update(ApiKey)
-            .where(ApiKey.id == api_key.id)
-            .values(last_used_at=datetime.now(timezone.utc))
+            update(ApiKey).where(ApiKey.id == api_key.id).values(last_used_at=datetime.now(UTC))
         )
 
         return api_key.project_id
@@ -104,5 +102,5 @@ class ApiKeyService:
                 code="API_KEY_NOT_FOUND",
                 status_code=404,
             )
-        api_key.deleted_at = datetime.now(timezone.utc)
+        api_key.deleted_at = datetime.now(UTC)
         await db.flush()

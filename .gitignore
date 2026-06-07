@@ -252,7 +252,9 @@ infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/*.tfvars
+infra/terraform/*.tfvars.json
 infra/terraform/.terraform.lock.hcl
+crash.*.log
 
 # Alembic
 backend/migrations/versions/*.pyc

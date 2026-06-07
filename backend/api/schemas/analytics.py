@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -22,7 +24,7 @@ class OverviewResponse(BaseModel):
 
 class RequestSummary(BaseModel):
     id: str
-    timestamp: str
+    timestamp: datetime
     model: str
     provider: str
     prompt_tokens: int

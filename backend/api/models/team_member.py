@@ -15,8 +15,12 @@ class TeamMember(TimestampMixin, Base):
         UniqueConstraint("project_id", "user_id", name="uq_team_members_project_user"),
     )
 
-    project_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("projects.id"), nullable=False)
-    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("projects.id"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id"), nullable=False
+    )
     # "owner" | "admin" | "member" | "viewer"
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
     invited_by: Mapped[str | None] = mapped_column(UUID(as_uuid=False), nullable=True)

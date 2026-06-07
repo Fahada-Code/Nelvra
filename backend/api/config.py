@@ -22,8 +22,8 @@ class Settings(BaseSettings):
     # Stripe
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
-    stripe_price_pro: str = ""    # price_xxx for Pro plan
-    stripe_price_team: str = ""   # price_xxx for Team plan
+    stripe_price_pro: str = ""  # price_xxx for Pro plan
+    stripe_price_team: str = ""  # price_xxx for Team plan
 
     # Email alerts (SMTP)
     smtp_host: str = "smtp.gmail.com"

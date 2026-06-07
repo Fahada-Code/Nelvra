@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,9 @@ class BillingService:
     @staticmethod
     async def get_or_create(db: AsyncSession, user_id: str) -> Subscription:
         result = await db.execute(
-            select(Subscription).where(Subscription.user_id == user_id, Subscription.deleted_at.is_(None))
+            select(Subscription).where(
+                Subscription.user_id == user_id, Subscription.deleted_at.is_(None)
+            )
         )
         sub = result.scalar_one_or_none()
         if sub is None:
@@ -25,7 +27,7 @@ class BillingService:
     async def check_event_limit(db: AsyncSession, user_id: str) -> None:
         """Raises 402 if the user has exceeded their monthly event quota."""
         sub = await BillingService.get_or_create(db, user_id)
-        now_key = datetime.now(timezone.utc).strftime("%Y-%m")
+        now_key = datetime.now(UTC).strftime("%Y-%m")
         if sub.events_month_key != now_key:
             sub.events_this_month = 0
             sub.events_month_key = now_key
@@ -33,7 +35,10 @@ class BillingService:
         limit = PLAN_LIMITS[sub.plan]["events_per_month"]
         if sub.events_this_month >= limit:
             raise NelvraException(
-                message=f"Monthly event limit reached ({limit:,} events on the {sub.plan} plan). Upgrade to continue.",
+                message=(
+                    f"Monthly event limit reached ({limit:,} events on the {sub.plan} plan). "
+                    f"Upgrade to continue."
+                ),
                 code="EVENT_LIMIT_EXCEEDED",
                 status_code=402,
             )
@@ -43,8 +48,9 @@ class BillingService:
     async def create_checkout_session(
         user_id: str, plan: str, success_url: str, cancel_url: str
     ) -> str:
-        from api.config import settings
         import stripe
+
+        from api.config import settings
 
         if not settings.stripe_secret_key:
             raise NelvraException("Stripe not configured", "STRIPE_NOT_CONFIGURED", 503)
@@ -63,8 +69,9 @@ class BillingService:
 
     @staticmethod
     async def create_portal_session(db: AsyncSession, user_id: str, return_url: str) -> str:
-        from api.config import settings
         import stripe
+
+        from api.config import settings
 
         if not settings.stripe_secret_key:
             raise NelvraException("Stripe not configured", "STRIPE_NOT_CONFIGURED", 503)
@@ -82,11 +89,14 @@ class BillingService:
 
     @staticmethod
     async def handle_webhook(db: AsyncSession, payload: bytes, sig_header: str) -> None:
-        from api.config import settings
         import stripe
 
+        from api.config import settings
+
         try:
-            event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.stripe_webhook_secret
+            )
         except stripe.error.SignatureVerificationError:
             raise NelvraException("Invalid webhook signature", "INVALID_WEBHOOK_SIGNATURE", 400)
 
@@ -97,9 +107,7 @@ class BillingService:
             customer_id = session["customer"]
             subscription_id = session["subscription"]
 
-            result = await db.execute(
-                select(Subscription).where(Subscription.user_id == user_id)
-            )
+            result = await db.execute(select(Subscription).where(Subscription.user_id == user_id))
             sub = result.scalar_one_or_none()
             if sub is None:
                 sub = Subscription(user_id=user_id)

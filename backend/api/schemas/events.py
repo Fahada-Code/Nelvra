@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -6,6 +6,15 @@ from pydantic import BaseModel, Field, field_validator
 
 class LLMEventCreate(BaseModel):
     timestamp: datetime
+
+    @field_validator("timestamp")
+    @classmethod
+    def ensure_timezone(cls, ts: datetime) -> datetime:
+        # Treat naive timestamps as UTC so they store unambiguously in TIMESTAMPTZ.
+        if ts.tzinfo is None:
+            return ts.replace(tzinfo=UTC)
+        return ts.astimezone(UTC)
+
     model: str = Field(max_length=100)
     provider: Literal["openai", "anthropic"]
     prompt_id: str | None = Field(None, max_length=255)
@@ -50,7 +59,7 @@ class LLMEventBatchCreate(BaseModel):
 class LLMEventResponse(BaseModel):
     id: str
     project_id: str
-    timestamp: str
+    timestamp: datetime
     model: str
     provider: str
     prompt_id: str | None

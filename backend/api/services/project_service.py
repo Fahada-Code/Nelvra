@@ -34,9 +34,7 @@ class ProjectService:
     @staticmethod
     async def list_all(db: AsyncSession) -> list[Project]:
         result = await db.execute(
-            select(Project)
-            .where(Project.deleted_at.is_(None))
-            .order_by(Project.created_at.desc())
+            select(Project).where(Project.deleted_at.is_(None)).order_by(Project.created_at.desc())
         )
         return list(result.scalars().all())
 

@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import settings
 from ..database import get_db
 from ..dependencies import get_current_project_id
 from ..exceptions import NelvraException
@@ -23,8 +22,9 @@ async def get_subscription(
     project_id: str = Depends(get_current_project_id),
     db: AsyncSession = Depends(get_db),
 ) -> SubscriptionResponse:
-    from ..models.project import Project
     from sqlalchemy import select
+
+    from ..models.project import Project
 
     # Resolve user_id from project
     result = await db.execute(select(Project).where(Project.id == project_id))
@@ -50,8 +50,9 @@ async def get_usage(
     project_id: str = Depends(get_current_project_id),
     db: AsyncSession = Depends(get_db),
 ) -> UsageResponse:
-    from ..models.project import Project
     from sqlalchemy import select
+
+    from ..models.project import Project
 
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
@@ -74,8 +75,9 @@ async def create_checkout(
     project_id: str = Depends(get_current_project_id),
     db: AsyncSession = Depends(get_db),
 ) -> CheckoutResponse:
-    from ..models.project import Project
     from sqlalchemy import select
+
+    from ..models.project import Project
 
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
@@ -94,8 +96,9 @@ async def create_portal(
     project_id: str = Depends(get_current_project_id),
     db: AsyncSession = Depends(get_db),
 ) -> PortalResponse:
-    from ..models.project import Project
     from sqlalchemy import select
+
+    from ..models.project import Project
 
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()

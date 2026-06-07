@@ -1,8 +1,8 @@
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base, TimestampMixin
@@ -21,10 +21,9 @@ class LLMEvent(TimestampMixin, Base):
     project_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("projects.id"), nullable=False
     )
-    # Caller-provided timestamp — preserves the actual event time even if ingestion is delayed
-    timestamp: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )
+    # Caller-provided timestamp — preserves the actual event time even if ingestion is delayed.
+    # Stored as TIMESTAMPTZ so the (project_id, timestamp) index serves range scans directly.
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
     prompt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

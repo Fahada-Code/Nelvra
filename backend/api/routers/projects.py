@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_project_id
 from ..schemas.api_keys import ApiKeyCreate, ApiKeyCreatedResponse, ApiKeyResponse
 from ..schemas.projects import ProjectCreate, ProjectResponse, ProjectUpdate
 from ..services.api_key_service import ApiKeyService

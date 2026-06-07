@@ -36,7 +36,11 @@ async def rate_limit_events(
     """Enforces per-key rate limit on event ingestion endpoints."""
     # Use first 20 chars of the bearer token as the rate limit key.
     # This is not the full key, so it's safe to use as a Redis key.
-    key_prefix = credentials.credentials[:20] if len(credentials.credentials) >= 20 else credentials.credentials
+    key_prefix = (
+        credentials.credentials[:20]
+        if len(credentials.credentials) >= 20
+        else credentials.credentials
+    )
     redis_key = f"rl:events:{key_prefix}"
 
     try:
@@ -45,7 +49,10 @@ async def rate_limit_events(
             await redis_client.expire(redis_key, 60)
         if count > settings.events_rate_limit:
             raise NelvraException(
-                message=f"Rate limit exceeded. Maximum {settings.events_rate_limit} events per minute.",
+                message=(
+                    f"Rate limit exceeded. Maximum {settings.events_rate_limit} "
+                    f"events per minute."
+                ),
                 code="RATE_LIMIT_EXCEEDED",
                 status_code=429,
             )

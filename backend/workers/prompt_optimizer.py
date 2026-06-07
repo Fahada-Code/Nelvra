@@ -5,6 +5,7 @@ Generates an optimized version of an underperforming prompt using Claude.
 Triggered manually (via API) or automatically when a prompt's quality score
 drops below the optimization threshold.
 """
+
 import asyncio
 import logging
 
@@ -48,16 +49,20 @@ def optimize_prompt(self, prompt_id: str) -> None:
 
 async def _run(prompt_id: str) -> None:
     from api.config import settings
+
     if not settings.anthropic_api_key:
         logger.warning("ANTHROPIC_API_KEY not set — prompt optimization skipped")
         return
 
-    from api.database import AsyncSessionLocal
-    from api.models.prompt import Prompt
     from sqlalchemy import select
 
+    from api.database import AsyncSessionLocal
+    from api.models.prompt import Prompt
+
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Prompt).where(Prompt.id == prompt_id, Prompt.deleted_at.is_(None)))
+        result = await db.execute(
+            select(Prompt).where(Prompt.id == prompt_id, Prompt.deleted_at.is_(None))
+        )
         prompt = result.scalar_one_or_none()
         if prompt is None:
             return
@@ -77,32 +82,38 @@ async def _run(prompt_id: str) -> None:
         prompt.optimization_status = "suggested"
         prompt.optimization_savings = savings
         await db.commit()
-        logger.info("Optimization suggested for prompt %s (est. %.1f%% token reduction)", prompt_id, savings)
+        logger.info(
+            "Optimization suggested for prompt %s (est. %.1f%% token reduction)", prompt_id, savings
+        )
 
 
 async def _generate_optimized(api_key: str, prompt) -> str | None:
     import anthropic
 
-    monthly_cost = (
-        (prompt.avg_cost_usd or 0) * (prompt.request_count or 0) * 30
-    )
+    monthly_cost = (prompt.avg_cost_usd or 0) * (prompt.request_count or 0) * 30
 
     client = anthropic.AsyncAnthropic(api_key=api_key)
     try:
         msg = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2000,
-            messages=[{
-                "role": "user",
-                "content": _OPTIMIZATION_PROMPT.format(
-                    name=prompt.name,
-                    content=prompt.content,
-                    quality_score=f"{prompt.avg_quality_score:.2f}" if prompt.avg_quality_score else "unknown",
-                    avg_tokens=prompt.avg_tokens or "unknown",
-                    monthly_cost=monthly_cost,
-                    request_count=prompt.request_count,
-                ),
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": _OPTIMIZATION_PROMPT.format(
+                        name=prompt.name,
+                        content=prompt.content,
+                        quality_score=(
+                            f"{prompt.avg_quality_score:.2f}"
+                            if prompt.avg_quality_score
+                            else "unknown"
+                        ),
+                        avg_tokens=prompt.avg_tokens or "unknown",
+                        monthly_cost=monthly_cost,
+                        request_count=prompt.request_count,
+                    ),
+                }
+            ],
         )
         return msg.content[0].text.strip()
     except Exception as exc:
