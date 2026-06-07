@@ -32,7 +32,7 @@ async def invite_member(
     result = await db.execute(select(Project).where(Project.id == project_id))
     project = result.scalar_one_or_none()
     inviter_id = project.owner_user_id if project else None
-    return await TeamService.invite(db, project_id, inviter_id or "", data)
+    return await TeamService.invite(db, project_id, inviter_id, data)
 
 
 @router.put("/{project_id}/members/{member_id}", response_model=TeamMemberResponse)

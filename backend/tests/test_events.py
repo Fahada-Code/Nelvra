@@ -1,18 +1,18 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
-
-from api.schemas.projects import ProjectCreate
-from api.schemas.api_keys import ApiKeyCreate
-from api.services.project_service import ProjectService
-from api.services.api_key_service import ApiKeyService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.schemas.api_keys import ApiKeyCreate
+from api.schemas.projects import ProjectCreate
+from api.services.api_key_service import ApiKeyService
+from api.services.project_service import ProjectService
 
 
 def _valid_event_payload() -> dict:
     return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "model": "gpt-4o",
         "provider": "openai",
         "messages": [{"role": "user", "content": "Hello"}],
@@ -164,13 +164,15 @@ async def test_ingest_event_with_optional_fields(client: AsyncClient, db: AsyncS
     _, key = await _create_project_with_key(db, client)
 
     payload = _valid_event_payload()
-    payload.update({
-        "user_id": "user_123",
-        "session_id": "sess_abc",
-        "feature": "chat",
-        "tags": ["production", "v2"],
-        "custom_metadata": {"ab_test": "variant_b"},
-    })
+    payload.update(
+        {
+            "user_id": "user_123",
+            "session_id": "sess_abc",
+            "feature": "chat",
+            "tags": ["production", "v2"],
+            "custom_metadata": {"ab_test": "variant_b"},
+        }
+    )
 
     resp = await client.post(
         "/v1/events",

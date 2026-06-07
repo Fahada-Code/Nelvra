@@ -1,24 +1,22 @@
-import asyncio
+import os
 
 import asyncpg
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from api.database import get_db
 from api.main import app
 from api.models.base import Base
 
-TEST_DATABASE_URL = "postgresql+asyncpg://nelvra:nelvra@localhost:5432/nelvra_test"
-ADMIN_DATABASE_URL = "postgresql://nelvra:nelvra@localhost:5432/postgres"
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+# Overridable via env so the suite can run against any local Postgres without
+# editing this file. Defaults match the CI postgres service (user/pass: nelvra).
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+asyncpg://nelvra:nelvra@localhost:5432/nelvra_test"
+)
+ADMIN_DATABASE_URL = os.environ.get(
+    "TEST_ADMIN_DATABASE_URL", "postgresql://nelvra:nelvra@localhost:5432/postgres"
+)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

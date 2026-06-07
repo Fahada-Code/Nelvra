@@ -65,15 +65,19 @@ class AnalyticsService:
         requests_by_provider = {row.provider: row.requests for row in provider_result}
 
         # Hourly bucketed requests (for sparklines / time-series charts)
+        # Reuse one expression object so the "hour" bind parameter is identical in
+        # SELECT, GROUP BY and ORDER BY — otherwise Postgres sees distinct params
+        # and rejects the grouping.
+        hour_bucket = func.date_trunc("hour", LLMEvent.timestamp)
         hourly_result = await db.execute(
             select(
-                func.date_trunc("hour", LLMEvent.timestamp).label("hour"),
+                hour_bucket.label("hour"),
                 func.count().label("requests"),
                 func.coalesce(func.sum(LLMEvent.cost_usd), 0).label("cost_usd"),
             )
             .where(*base_filter)
-            .group_by(func.date_trunc("hour", LLMEvent.timestamp))
-            .order_by(func.date_trunc("hour", LLMEvent.timestamp))
+            .group_by(hour_bucket)
+            .order_by(hour_bucket)
         )
         hourly_buckets = [
             HourlyBucket(

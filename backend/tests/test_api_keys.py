@@ -2,14 +2,14 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.services.api_key_service import ApiKeyService
 from api.schemas.api_keys import ApiKeyCreate
+from api.services.api_key_service import ApiKeyService
 
 
 @pytest.mark.asyncio
 async def test_generate_api_key_format(db: AsyncSession):
-    from api.services.project_service import ProjectService
     from api.schemas.projects import ProjectCreate
+    from api.services.project_service import ProjectService
 
     project = await ProjectService.create(db, ProjectCreate(name="Format Test Project"))
     api_key, plaintext = await ApiKeyService.create(db, project.id, ApiKeyCreate(name="test key"))
@@ -22,14 +22,12 @@ async def test_generate_api_key_format(db: AsyncSession):
 @pytest.mark.asyncio
 async def test_validate_valid_key(db: AsyncSession):
     # Create a real project first
-    from api.services.project_service import ProjectService
     from api.schemas.projects import ProjectCreate
+    from api.services.project_service import ProjectService
 
     project = await ProjectService.create(db, ProjectCreate(name="Key Test Project"))
 
-    api_key, plaintext = await ApiKeyService.create(
-        db, project.id, ApiKeyCreate(name="test key")
-    )
+    api_key, plaintext = await ApiKeyService.create(db, project.id, ApiKeyCreate(name="test key"))
 
     project_id = await ApiKeyService.validate(db, plaintext)
     assert project_id == project.id
@@ -49,13 +47,11 @@ async def test_validate_malformed_key(db: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_revoked_key_is_invalid(db: AsyncSession):
-    from api.services.project_service import ProjectService
     from api.schemas.projects import ProjectCreate
+    from api.services.project_service import ProjectService
 
     project = await ProjectService.create(db, ProjectCreate(name="Revoke Test"))
-    api_key, plaintext = await ApiKeyService.create(
-        db, project.id, ApiKeyCreate(name="revoke me")
-    )
+    api_key, plaintext = await ApiKeyService.create(db, project.id, ApiKeyCreate(name="revoke me"))
 
     await ApiKeyService.revoke(db, project.id, api_key.id)
 
@@ -68,9 +64,7 @@ async def test_create_api_key_via_endpoint(client: AsyncClient):
     create_resp = await client.post("/v1/projects", json={"name": "Key Endpoint Test"})
     project_id = create_resp.json()["id"]
 
-    key_resp = await client.post(
-        f"/v1/projects/{project_id}/keys", json={"name": "Production Key"}
-    )
+    key_resp = await client.post(f"/v1/projects/{project_id}/keys", json={"name": "Production Key"})
     assert key_resp.status_code == 201
     data = key_resp.json()
     assert "key" in data

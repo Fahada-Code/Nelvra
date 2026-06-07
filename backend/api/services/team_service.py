@@ -29,7 +29,7 @@ class TeamService:
 
     @staticmethod
     async def invite(
-        db: AsyncSession, project_id: str, inviter_id: str, data: TeamMemberInvite
+        db: AsyncSession, project_id: str, inviter_id: str | None, data: TeamMemberInvite
     ) -> TeamMemberResponse:
         user_result = await db.execute(
             select(User).where(User.github_login == data.github_login, User.deleted_at.is_(None))

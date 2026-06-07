@@ -1,15 +1,15 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.schemas.projects import ProjectCreate
 from api.schemas.api_keys import ApiKeyCreate
-from api.services.project_service import ProjectService
+from api.schemas.events import LLMEventCreate
+from api.schemas.projects import ProjectCreate
 from api.services.api_key_service import ApiKeyService
 from api.services.event_service import EventService
-from api.schemas.events import LLMEventCreate
+from api.services.project_service import ProjectService
 
 
 async def _setup(db: AsyncSession) -> tuple[str, str]:
@@ -21,7 +21,7 @@ async def _setup(db: AsyncSession) -> tuple[str, str]:
 
 def _event_data(model: str = "gpt-4o", provider: str = "openai") -> LLMEventCreate:
     return LLMEventCreate(
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         model=model,
         provider=provider,
         messages=[{"role": "user", "content": "hello"}],
@@ -74,7 +74,9 @@ async def test_overview_multiple_models(client: AsyncClient, db: AsyncSession):
     project_id, key = await _setup(db)
 
     await EventService.create(db, project_id, _event_data("gpt-4o", "openai"))
-    await EventService.create(db, project_id, _event_data("claude-3-5-sonnet-20241022", "anthropic"))
+    await EventService.create(
+        db, project_id, _event_data("claude-3-5-sonnet-20241022", "anthropic")
+    )
 
     resp = await client.get(
         "/v1/analytics/overview",
@@ -108,7 +110,9 @@ async def test_list_requests_filter_by_provider(client: AsyncClient, db: AsyncSe
     project_id, key = await _setup(db)
 
     await EventService.create(db, project_id, _event_data("gpt-4o", "openai"))
-    await EventService.create(db, project_id, _event_data("claude-3-5-sonnet-20241022", "anthropic"))
+    await EventService.create(
+        db, project_id, _event_data("claude-3-5-sonnet-20241022", "anthropic")
+    )
 
     resp = await client.get(
         "/v1/analytics/requests?provider=openai",

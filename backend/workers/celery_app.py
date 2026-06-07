@@ -22,9 +22,17 @@ app.conf.update(
     accept_content=["json"],
     timezone="UTC",
     enable_utc=True,
-    task_track_started=True,
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    # These are fire-and-forget side-effect tasks — nobody reads their return
+    # value. Ignoring results avoids the result backend entirely on enqueue,
+    # which otherwise blocks the caller retrying Redis when it's unreachable.
+    task_ignore_result=True,
+    # Fail fast on enqueue so a slow/unreachable broker never hangs an API
+    # request; the producer (api/tasks.py) catches the error and skips the task.
+    task_publish_retry=False,
+    broker_connection_retry_on_startup=False,
+    broker_transport_options={"socket_connect_timeout": 2, "socket_timeout": 2},
     beat_schedule={
         "check-alerts-every-minute": {
             "task": "workers.alert_dispatcher.check_all_alerts",

@@ -1,5 +1,10 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Run session-scoped DB fixtures and the tests on the same event loop. Without
+# this, asyncpg connections opened in session fixtures fail with "attached to a
+# different loop" when used inside function-scoped tests.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 
 [tool.ruff]

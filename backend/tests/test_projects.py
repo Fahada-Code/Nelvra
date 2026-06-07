@@ -66,8 +66,6 @@ async def test_update_project(client: AsyncClient):
     create_resp = await client.post("/v1/projects", json={"name": "Original"})
     project_id = create_resp.json()["id"]
 
-    update_resp = await client.put(
-        f"/v1/projects/{project_id}", json={"name": "Updated"}
-    )
+    update_resp = await client.put(f"/v1/projects/{project_id}", json={"name": "Updated"})
     assert update_resp.status_code == 200
     assert update_resp.json()["name"] == "Updated"
